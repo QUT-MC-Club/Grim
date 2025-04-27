@@ -41,14 +41,6 @@ jobs:
     - name: Build with Gradle (Actual Build for Artifacts)
       run: ./gradlew build
 
-    - name: Upload Bukkit Artifact
-      uses: actions/upload-artifact@v4
-      with:
-        name: grimac-bukkit
-        # Adding if-no-files-found for robustness
-        path: ${{ github.workspace }}/bukkit/build/libs/grimac-bukkit-*.jar
-        if-no-files-found: error
-
     - name: Upload Fabric Artifact
       uses: actions/upload-artifact@v4
       with:
