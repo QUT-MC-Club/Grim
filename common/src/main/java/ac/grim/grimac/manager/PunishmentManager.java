@@ -10,7 +10,9 @@ import ac.grim.grimac.events.packets.ProxyAlertMessenger;
 import ac.grim.grimac.player.GrimPlayer;
 import ac.grim.grimac.utils.anticheat.LogUtil;
 import ac.grim.grimac.utils.anticheat.MessageUtil;
+import lombok.RequiredArgsConstructor;
 import net.kyori.adventure.text.Component;
+import net.kyori.adventure.text.minimessage.MiniMessage;
 
 import java.util.ArrayList;
 import java.util.HashMap;
@@ -89,7 +91,7 @@ public class PunishmentManager implements ConfigReloadable {
                     parsed.add(new ParsedCommand(threshold, interval, commandString));
                 }
 
-                groups.add(new PunishGroup(checksList, parsed, removeViolationsAfter));
+                groups.add(new PunishGroup(checksList, parsed, removeViolationsAfter * 1000));
             }
         } catch (Exception e) {
             LogUtil.error("Error while loading punishments.yml! This is likely your fault!");
@@ -104,9 +106,8 @@ public class PunishmentManager implements ConfigReloadable {
                 .replace("%check_name%", check.getDisplayName())
                 .replace("%experimental%", check.isExperimental() ? experimentalSymbol : "")
                 .replace("%vl%", Integer.toString(vl))
-                .replace("%verbose%", verbose)
                 .replace("%description%", check.getDescription())
-        );
+        ).replace("%verbose%", MiniMessage.miniMessage().escapeTags(verbose));
     }
 
     public boolean handleAlert(GrimPlayer player, String verbose, Check check) {
@@ -141,21 +142,19 @@ public class PunishmentManager implements ConfigReloadable {
                                 case "[proxy]" -> ProxyAlertMessenger.sendPluginMessage(cmd);
                                 case "[alert]" -> {
                                     sentDebug = true;
-                                    if (testMode) { // secret test mode // Why does this exist? -Axionize
-                                        player.user.sendMessage(MessageUtil.miniMessage(cmd));
-                                        continue;
-                                    }
                                     Component message = MessageUtil.miniMessage(cmd);
-                                    GrimAPI.INSTANCE.getAlertManager().sendAlert(message);
+                                    if (testMode) { // secret test mode
+                                        player.user.sendMessage(message);
+                                    } else {
+                                        GrimAPI.INSTANCE.getAlertManager().sendAlert(message);
+                                    }
                                 }
-                                default -> {
-                                    GrimAPI.INSTANCE.getScheduler().getGlobalRegionScheduler().run(GrimAPI.INSTANCE.getGrimPlugin(), () ->
-                                            GrimAPI.INSTANCE.getPlatformServer().dispatchCommand(
-                                                    GrimAPI.INSTANCE.getPlatformServer().getConsoleSender(),
-                                                    cmd
-                                            )
-                                    );
-                                }
+                                default -> GrimAPI.INSTANCE.getScheduler().getGlobalRegionScheduler().run(GrimAPI.INSTANCE.getGrimPlugin(), () ->
+                                        GrimAPI.INSTANCE.getPlatformServer().dispatchCommand(
+                                                GrimAPI.INSTANCE.getPlatformServer().getConsoleSender(),
+                                                cmd
+                                        )
+                                );
                             }
                         }
 
@@ -189,28 +188,18 @@ public class PunishmentManager implements ConfigReloadable {
     }
 }
 
+@RequiredArgsConstructor
 class PunishGroup {
     public final List<AbstractCheck> checks;
     public final List<ParsedCommand> commands;
     public final Map<Long, Check> violations = new HashMap<>();
-    public final int removeViolationsAfter;
-
-    public PunishGroup(List<AbstractCheck> checks, List<ParsedCommand> commands, int removeViolationsAfter) {
-        this.checks = checks;
-        this.commands = commands;
-        this.removeViolationsAfter = removeViolationsAfter * 1000;
-    }
+    public final int removeViolationsAfter; // time to remove violations after in milliseconds
 }
 
+@RequiredArgsConstructor
 class ParsedCommand {
     public final int threshold;
     public final int interval;
     public final String command;
     public int executeCount;
-
-    public ParsedCommand(int threshold, int interval, String command) {
-        this.threshold = threshold;
-        this.interval = interval;
-        this.command = command;
-    }
 }

@@ -1,4 +1,5 @@
 import net.minecrell.pluginyml.bukkit.BukkitPluginDescription.Permission
+import versioning.BuildConfig
 
 plugins {
     `maven-publish`
@@ -36,7 +37,11 @@ dependencies {
     compileOnly(libs.paper.api)
     compileOnly(libs.placeholderapi)
 
-    implementation(libs.packetevents.spigot)
+    if (BuildConfig.shadePE) {
+        implementation(libs.packetevents.spigot)
+    } else {
+        compileOnly(libs.packetevents.spigot)
+    }
     implementation(libs.cloud.paper)
     implementation(libs.adventure.platform.bukkit)
 
@@ -51,6 +56,10 @@ bukkit {
     website = "https://grim.ac/"
     apiVersion = "1.13"
     foliaSupported = true
+
+    if (!BuildConfig.shadePE) {
+        depend = listOf("packetevents")
+    }
 
     softDepend = listOf(
         "ProtocolLib",
