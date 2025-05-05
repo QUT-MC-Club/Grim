@@ -35,7 +35,7 @@ import java.util.Map;
 import java.util.Set;
 
 // Expansion to the CollisionData class, which is different than regular ray tracing hitboxes
-public enum HitboxData {
+public enum HitboxData implements HitBoxFactory {
 
     RAILS((player, item, version, data, isTargetBlock, x, y, z) -> {
         return switch (data.getShape()) {
@@ -473,6 +473,13 @@ public enum HitboxData {
 
     HANGING_ROOTS(new HexCollisionBox(2.0D, 10.0D, 2.0D, 14.0D, 16.0D, 14.0D), StateTypes.HANGING_ROOTS),
 
+    HANGING_MOSS((player, item, version, data, isTargetBlock, x, y, z) -> {
+        if (version.isOlderThan(ClientVersion.V_1_21_2)) {
+            return HANGING_ROOTS.fetch(player, item, version, data, isTargetBlock, x, y, z);
+        }
+        return new HexCollisionBox(1, data.isTip() ? 2 : 0, 1, 15, 16, 15);
+    }, StateTypes.PALE_HANGING_MOSS),
+
     GRASS_FERN((player, item, version, data, isTargetBlock, x, y, z) -> {
         if (version.isOlderThan(ClientVersion.V_1_13)) {
             return new SimpleCollisionBox(0.1F, 0.0F, 0.1F, 0.9F, 0.8F, 0.9F);
@@ -565,26 +572,7 @@ public enum HitboxData {
 
     PINK_PETALS_BLOCK((player, item, version, data, isTargetBlock, x, y, z) -> {
         if (version.isNewerThan(ClientVersion.V_1_20_2)) {
-            int flowerAmount = data.getFlowerAmount();
-            int horizontalIndex = getHorizontalID(data.getFacing());
-
-            CollisionBox result = flowerAmount < 2 ? NoCollisionBox.INSTANCE : new ComplexCollisionBox(flowerAmount);
-
-            // Pre-defined collision boxes for each quadrant
-            HexCollisionBox[] boxes = new HexCollisionBox[]{
-                    new HexCollisionBox(8, 0, 8, 16, 3, 16),  // SE
-                    new HexCollisionBox(8, 0, 0, 16, 3, 8),   // NE
-                    new HexCollisionBox(0, 0, 0, 8, 3, 8),    // NW
-                    new HexCollisionBox(0, 0, 8, 8, 3, 16)    // SW
-            };
-
-            // Add boxes based on flower amount and facing
-            for (int i = 0; i < flowerAmount; i++) {
-                int index = Math.floorMod(i - horizontalIndex, 4);
-                result = result.union(boxes[index]);
-            }
-
-            return result;
+            return getFlowerBedHitBox(data.getFlowerAmount(), data.getFacing().getHorizontalId());
         } else if (version.isNewerThan(ClientVersion.V_1_19_3)) {
             return new HexCollisionBox(0.0D, 0.0D, 0.0D, 16.0D, 3.0D, 16.0D);
         } else if (version.isNewerThan(ClientVersion.V_1_12_2)) {
@@ -608,6 +596,44 @@ public enum HitboxData {
             return NoCollisionBox.INSTANCE;
         }
     }, StateTypes.FROGSPAWN),
+
+    PALE_HANGING_MOSS((player, heldItem, version, block, isTargetBlock, x, y, z)
+            -> block.isTip()
+            ? new HexCollisionBox(1.0, 2.0, 1.0, 15.0, 16.0, 15.0)
+            : new HexCollisionBox(1.0, 0.0, 1.0, 15.0, 16.0, 15.0), StateTypes.PALE_HANGING_MOSS),
+
+    RESIN_CLUMP(new SimpleCollisionBox(0, 0, 0, 1, 0.0625, 1), StateTypes.RESIN_CLUMP),
+
+    BUSH((player, heldItem, version, block, isTargetBlock, x, y, z)
+            -> version.isNewerThan(ClientVersion.V_1_21_4)
+            ? new SimpleCollisionBox(0, 0, 0, 1, 0.8125, 1)
+            : GRASS_FERN.dynamic.fetch(player, heldItem, version, block, isTargetBlock, x, y, z), StateTypes.BUSH),
+
+    SHORT_DRY_GRASS((player, heldItem, version, block, isTargetBlock, x, y, z)
+            -> version.isNewerThan(ClientVersion.V_1_21_4)
+            ? new SimpleCollisionBox(0.125, 0, 0.125, 0.875, 0.625, 0.875)
+            : GRASS_FERN.dynamic.fetch(player, heldItem, version, block, isTargetBlock, x, y, z), StateTypes.SHORT_DRY_GRASS),
+
+    TALL_DRY_GRASS((player, heldItem, version, block, isTargetBlock, x, y, z)
+            -> version.isNewerThan(ClientVersion.V_1_21_4)
+            ? new SimpleCollisionBox(0.0625, 0, 0.0625, 0.9375, 1, 0.9375)
+            : GRASS_FERN.dynamic.fetch(player, heldItem, version, block, isTargetBlock, x, y, z), StateTypes.TALL_DRY_GRASS),
+
+    NON_PINK_PETAL_FLOWERBED((player, item, version, data, isTargetBlock, x, y, z) -> {
+        if (version.isNewerThan(ClientVersion.V_1_21_4)) {
+            return getFlowerBedHitBox(data.getFlowerAmount(), data.getFacing().getHorizontalId());
+        } else {
+            return GLOW_LICHEN_SCULK_VEIN.fetch(player, item, version, data, isTargetBlock, x, y, z);
+        }
+    }, StateTypes.LEAF_LITTER, StateTypes.WILDFLOWERS),
+
+    CACTUS_FLOWER((player, item, version, data, isTargetBlock, x, y, z) -> {
+        if (version.isNewerThan(ClientVersion.V_1_21_4)) {
+            return new SimpleCollisionBox(0.0625, 0, 0.0625, 0.9375, 0.75, 0.9375);
+        } else {
+            return CORAL_FAN.box.copy();
+        }
+    }, StateTypes.CACTUS_FLOWER),
 
     // always a fullblock hitbox. Via replacement is obsidian
     SCULK_SHRIKER(new SimpleCollisionBox(0, 0, 0, 1, 1, 1, true), StateTypes.SCULK_SHRIEKER);
@@ -640,6 +666,11 @@ public enum HitboxData {
         this.materials = mList.toArray(new StateType[0]);
     }
 
+    @Override
+    public CollisionBox fetch(GrimPlayer player, StateType heldItem, ClientVersion version, WrappedBlockState block, boolean isTargetBlock, int x, int y, int z) {
+        return box != null ? box.copy() : dynamic.fetch(player, heldItem, version, block, isTargetBlock, x, y, z);
+    }
+
     public static HitboxData getData(StateType material) {
         return lookup.get(material);
     }
@@ -652,15 +683,7 @@ public enum HitboxData {
             return CollisionData.getRawData(block.getType()).getMovementCollisionBox(player, version, block, x, y, z);
         }
 
-        // Simple collision box to override
-        if (data.box != null)
-            return data.box.copy().offset(x, y, z);
-
-        // Allow this class to override collision boxes when they aren't the same as regular boxes
-        HitBoxFactory hitBoxFactory = data.dynamic;
-        CollisionBox collisionBox = hitBoxFactory.fetch(player, heldItem, version, block, isTargetBlock, x, y, z);
-        collisionBox.offset(x, y, z);
-        return collisionBox;
+        return data.fetch(player, heldItem, version, block, isTargetBlock, x, y, z).offset(x, y, z);
     }
 
     private static int getPropaguleMinHeight(int age) {
@@ -691,14 +714,22 @@ public enum HitboxData {
         }
     }
 
-    private static int getHorizontalID(BlockFace facing) {
-        return switch (facing) {
-            case DOWN, UP -> -1;
-            case NORTH -> 2;
-            case SOUTH -> 0;
-            case WEST -> 1;
-            case EAST -> 3;
-            default -> throw new IllegalStateException("Impossible blockface for getHorizontalID");
-        };
+    // Pre-defined collision boxes for each quadrant
+    private static final HexCollisionBox[] flowerBedHitboxes = new HexCollisionBox[]{
+            new HexCollisionBox(8, 0, 8, 16, 3, 16),  // SE
+            new HexCollisionBox(8, 0, 0, 16, 3, 8),   // NE
+            new HexCollisionBox(0, 0, 0, 8, 3, 8),    // NW
+            new HexCollisionBox(0, 0, 8, 8, 3, 16)    // SW
+    };
+    // TODO, optimize? We don't have to return a CCB and will never return NCB, use SCB.encompass()?
+    private static CollisionBox getFlowerBedHitBox(int flowerAmount, int horizontalIndex) {
+        CollisionBox result = flowerAmount < 2 ? NoCollisionBox.INSTANCE : new ComplexCollisionBox(flowerAmount);
+
+        // Add boxes based on flower amount and facing
+        for (int i = 0; i < flowerAmount; i++) {
+            int index = Math.floorMod(i - horizontalIndex, 4);
+            result = result.union(flowerBedHitboxes[index]);
+        }
+        return result;
     }
 }

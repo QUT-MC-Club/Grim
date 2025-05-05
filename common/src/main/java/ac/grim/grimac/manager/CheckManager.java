@@ -20,14 +20,7 @@ import ac.grim.grimac.checks.impl.combat.Hitboxes;
 import ac.grim.grimac.checks.impl.combat.MultiInteractA;
 import ac.grim.grimac.checks.impl.combat.MultiInteractB;
 import ac.grim.grimac.checks.impl.combat.Reach;
-import ac.grim.grimac.checks.impl.crash.CrashA;
-import ac.grim.grimac.checks.impl.crash.CrashB;
-import ac.grim.grimac.checks.impl.crash.CrashC;
-import ac.grim.grimac.checks.impl.crash.CrashD;
-import ac.grim.grimac.checks.impl.crash.CrashE;
-import ac.grim.grimac.checks.impl.crash.CrashF;
-import ac.grim.grimac.checks.impl.crash.CrashG;
-import ac.grim.grimac.checks.impl.crash.CrashH;
+import ac.grim.grimac.checks.impl.crash.*;
 import ac.grim.grimac.checks.impl.elytra.ElytraA;
 import ac.grim.grimac.checks.impl.elytra.ElytraB;
 import ac.grim.grimac.checks.impl.elytra.ElytraC;
@@ -48,12 +41,7 @@ import ac.grim.grimac.checks.impl.movement.NoSlow;
 import ac.grim.grimac.checks.impl.movement.PredictionRunner;
 import ac.grim.grimac.checks.impl.movement.SetbackBlocker;
 import ac.grim.grimac.checks.impl.movement.VehiclePredictionRunner;
-import ac.grim.grimac.checks.impl.multiactions.MultiActionsA;
-import ac.grim.grimac.checks.impl.multiactions.MultiActionsB;
-import ac.grim.grimac.checks.impl.multiactions.MultiActionsC;
-import ac.grim.grimac.checks.impl.multiactions.MultiActionsD;
-import ac.grim.grimac.checks.impl.multiactions.MultiActionsE;
-import ac.grim.grimac.checks.impl.multiactions.MultiActionsF;
+import ac.grim.grimac.checks.impl.multiactions.*;
 import ac.grim.grimac.checks.impl.packetorder.PacketOrderB;
 import ac.grim.grimac.checks.impl.packetorder.PacketOrderC;
 import ac.grim.grimac.checks.impl.packetorder.*;
@@ -172,6 +160,7 @@ public class CheckManager {
                 .put(MultiActionsC.class, new MultiActionsC(player))
                 .put(MultiActionsD.class, new MultiActionsD(player))
                 .put(MultiActionsE.class, new MultiActionsE(player))
+                .put(MultiActionsG.class, new MultiActionsG(player))
                 .put(PacketOrderB.class, new PacketOrderB(player))
                 .put(PacketOrderC.class, new PacketOrderC(player))
                 .put(PacketOrderD.class, new PacketOrderD(player))
@@ -179,6 +168,7 @@ public class CheckManager {
                 .put(VehicleA.class, new VehicleA(player))
                 .put(VehicleB.class, new VehicleB(player))
                 .put(VehicleD.class, new VehicleD(player))
+                .put(CrashI.class, new CrashI(player))
                 .put(SetbackBlocker.class, new SetbackBlocker(player)) // Must be last class otherwise we can't check while blocking packets
                 .build();
         positionCheck = new ImmutableClassToInstanceMap.Builder<PositionCheck>()
@@ -216,6 +206,7 @@ public class CheckManager {
                 .put(OffsetHandler.class, new OffsetHandler(player))
                 .put(SuperDebug.class, new SuperDebug(player))
                 .put(DebugHandler.class, new DebugHandler(player))
+                .put(BadPacketsJ.class, new BadPacketsJ(player))
                 .put(BadPacketsX.class, new BadPacketsX(player))
                 .put(NoSlow.class, new NoSlow(player))
                 .put(SprintB.class, new SprintB(player))
@@ -246,6 +237,8 @@ public class CheckManager {
                 .put(AirLiquidPlace.class, new AirLiquidPlace(player))
                 .put(MultiPlace.class, new MultiPlace(player))
                 .put(MultiActionsF.class, new MultiActionsF(player))
+                .put(BadPacketsH.class, new BadPacketsH(player))
+                .put(CrashG.class, new CrashG(player))
                 .put(FarPlace.class, new FarPlace(player))
                 .put(FabricatedPlace.class, new FabricatedPlace(player))
                 .put(PositionPlace.class, new PositionPlace(player))
@@ -264,7 +257,6 @@ public class CheckManager {
                 .put(CrashD.class, new CrashD(player))
                 .put(CrashE.class, new CrashE(player))
                 .put(CrashF.class, new CrashF(player))
-                .put(CrashG.class, new CrashG(player))
                 .put(CrashH.class, new CrashH(player))
                 .put(ExploitA.class, new ExploitA(player))
                 .put(ExploitB.class, new ExploitB(player))
@@ -415,10 +407,16 @@ public class CheckManager {
         for (BlockBreakCheck check : blockBreakChecks.values()) {
             check.onBlockBreak(blockBreak);
         }
+        for (BlockPlaceCheck check : blockPlaceCheck.values()) {
+            check.onBlockBreak(blockBreak);
+        }
     }
 
     public void onPostFlyingBlockBreak(final BlockBreak blockBreak) {
         for (BlockBreakCheck check : blockBreakChecks.values()) {
+            check.onPostFlyingBlockBreak(blockBreak);
+        }
+        for (BlockPlaceCheck check : blockPlaceCheck.values()) {
             check.onPostFlyingBlockBreak(blockBreak);
         }
     }
